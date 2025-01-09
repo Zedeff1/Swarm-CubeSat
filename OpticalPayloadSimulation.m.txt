@@ -1,0 +1,99 @@
+% Modified MATLAB Simulation for 12U CubeSat Telescope
+clear all; close all; clc;
+
+% Define system parameters
+focal_length = 300; % mm (effective focal length)
+aperture_diameter = 180; % mm (18 cm primary mirror)
+wavelength = 550e-9; % m (550 nm)
+pixel_size = 3.76e-6; % m (3.76 μm for Sony IMX455)
+sensor_size = [8420, 6380]; % pixels for Sony IMX455
+
+% Calculate basic optical properties
+f_number = focal_length / aperture_diameter;
+resolution_rad = 1.22 * wavelength / aperture_diameter;
+resolution_arcsec = resolution_rad * 180/pi * 3600;
+plate_scale = (pixel_size / focal_length) * (180/pi) * 3600; % arcsec/pixel
+sensor_width = sensor_size(1) * pixel_size;
+fov = 2 * atan(sensor_width / (2 * focal_length)) * 180/pi; % degrees
+
+% Print optical properties
+fprintf('F-number: %.2f\n', f_number);
+fprintf('Resolution (arcsec): %.3f\n', resolution_arcsec);
+fprintf('Plate scale (arcsec/pixel): %.3f\n', plate_scale);
+fprintf('Field of View (degrees): %.3f\n', fov);
+
+% Simulate microlensing events
+t = linspace(-3, 3, 1000); % Time in Einstein radius crossing times
+u0_values = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]; % Impact parameters
+colors = {'#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE'}; % Color scheme similar to the image
+
+% Create subplots
+figure('Position', [100, 100, 1000, 400]);
+
+% Subplot for lens diagram
+subplot(1, 2, 1);
+hold on;
+axis equal;
+xlim([-3, 3]);
+ylim([-3, 3]);
+xlabel('x/\theta_E');
+ylabel('y/\theta_E');
+title('a');
+
+% Plot Einstein ring
+theta = linspace(0, 2*pi, 1000);
+plot(cos(theta), sin(theta), 'k--');
+
+% Plot source and image paths
+for i = 1:length(u0_values)
+    u0 = u0_values(i);
+    y = u0 * ones(size(t));
+    x = t;
+    
+    % Source path
+    plot(x, y, 'o', 'Color', colors{i}, 'MarkerSize', 2);
+    
+    % Image paths
+    u = sqrt(x.^2 + y.^2);
+    theta_plus = 0.5 * (u + sqrt(u.^2 + 4));
+    theta_minus = 0.5 * (u - sqrt(u.^2 + 4));
+    
+    x_plus = theta_plus .* x ./ u;
+    y_plus = theta_plus .* y ./ u;
+    x_minus = theta_minus .* x ./ u;
+    y_minus = theta_minus .* y ./ u;
+    
+    plot(x_plus, y_plus, 'r-', 'LineWidth', 1);
+    plot(x_minus, y_minus, 'r-', 'LineWidth', 1);
+end
+
+% Plot lens position
+plot(0, 0, 'k.', 'MarkerSize', 20);
+
+% Annotations
+text(1.5, 0.2, 'Minor image path', 'Color', 'r');
+text(1.5, -0.2, 'Major image path', 'Color', 'r');
+legend('', 'Source', 'Images', 'Location', 'northwest');
+
+% Subplot for magnification curves
+subplot(1, 2, 2);
+hold on;
+xlim([-3, 3]);
+ylim([1, 7]);
+xlabel('Time(t_E)');
+ylabel('Magnification');
+title('b');
+
+for i = 1:length(u0_values)
+    u0 = u0_values(i);
+    u = sqrt(u0^2 + t.^2);
+    A = (u.^2 + 2) ./ (u .* sqrt(u.^2 + 4));
+    plot(t, A, 'Color', colors{i}, 'LineWidth', 1.5);
+end
+
+% Add legend
+legend(cellstr(num2str(u0_values', 'u_0 = %.1f')), 'Location', 'northeast');
+
+% Adjust layout
+set(gcf, 'Color', 'w');
+tight_layout();
